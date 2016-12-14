@@ -1,0 +1,10 @@
+library("dplyr")
+
+
+data <- read.csv("data.csv", stringsAsFactors = FALSE)
+data<-tbl_df(data)
+
+data_arrivals <- filter(data, Variable=="A")
+data_nights <- filter(data, Variable=="N")
+
+rm("data")
