@@ -1,0 +1,23 @@
+---
+title: "Forecasting tourism demand through search queries and machine learning"
+author: "Rendell de Kort*"
+date: "March 1, 2017"
+output: word_document
+---
+
+Centrale Bank van Aruba, Oranjestad, Aruba – r.e.dekort@cbaruba.org
+
+
+
+*Abstract*
+
+This paper utilizes different machine learning techniques for tourism demand forecasting. Considering the magnitude of tourism in terms of economic contribution to Small Island Developing States (SIDS), policy making could benefit greatly from accurate tourism demand forecasts. This paper pursues a novel approach of identifying relevant search query features through google correlate and applying machine learning techniques to estimate individual source market series prior to aggregation. The prediction performance of several machine learning methods is assessed when applied to monthly tourist arrivals from individual source countries to Aruba from 1994 to 2016. The results indicate that machine learning techniques in combination with novel internet datasets sets pose great potential for achieving accurate tourism demand forecasts.
+
+
+KEYWORDS: Forecast combination, machine learning, feature selection, tourism demand forecasting, random forest
+
+JEL CLASSIFICATION: C22, C40, C52, C63
+
+	
+Keywords: Forecasting; Machine learning; Tourism demand; Search data.
+
