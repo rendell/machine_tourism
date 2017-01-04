@@ -24,4 +24,38 @@ Keywords: Forecasting; Machine learning; Tourism demand; Search data.
 
 
 
+*1. Introduction*
+A key challange in many tourism destinations is the ccurate forecasting of inbound tourism to support destination management descisions.
+Even among tourism destinations, Aruba ranks 
 
+
+
+
+*2. Data Summary*
+Dependent variable: Tourism demand proxy:tourism receipts, tourism nights. for the two main markets: U.S., venezuela and the remaining source markets: "Other".
+
+
+Independent variables included onlin web search queries. 
+
+An online automoated method for internet query selection. Given a temporal pattern of interest, Google correlte determines which queries best mimc the data (Mohebbi, M. et al, 2011)
+This type of data has several advantages, including emidiate availability of the data, good temporal resolution and low cost to collect the data collection relative to traditional indicators.
+
+
+
+
+* 3. Methodology*
+
+
+
+
+*4. Results*
+
+
+
+*5. Conclusion*
+
+
+
+*6. References*
+
+Mohebbi, M. et al (2011). Google Correlate Whitepaper. Draft date: June 9, 2011.
