@@ -37,14 +37,23 @@ Dependent variable: Tourism demand proxy:tourism receipts, tourism nights. for t
 
 Independent variables included onlin web search queries. 
 
-An online automoated method for internet query selection. Given a temporal pattern of interest, Google correlte determines which queries best mimc the data (Mohebbi, M. et al, 2011)
+An online automoated method for internet query selection. Given a temporal pattern of interest, Google correlte determines which queries best mimc the data (Mohebbi et al, 2011).
 This type of data has several advantages, including emidiate availability of the data, good temporal resolution and low cost to collect the data collection relative to traditional indicators.
 
 
 
 
 * 3. Methodology*
+The modeling process is composed of two steps. Variable selection and model building.
 
+
+Variable selection
+We use google correlate to surface search queries whose temporal pattern is most hihgly correlated (R2) with our target pattern.Google correlate employs a novel approximate nearest neighbour (ANN) algorithm over million of candidate queries in an online search trees to produce results.
+For these models, query selection was performed on the regional level.
+
+The values of the query time series are applied to machine learning algorithms and a model was fitted to the date of the 3 main source country regions. 
+
+The model was built using monthly training data between XX/XX/XX and XX/XX inclusive, and evaluated by computing the correlation between resulting predictive estimates and the corresponding regional truth data over the holdout period between XX/XX/XX.
 
 
 
@@ -57,5 +66,5 @@ This type of data has several advantages, including emidiate availability of the
 
 
 *6. References*
-
 Mohebbi, M. et al (2011). Google Correlate Whitepaper. Draft date: June 9, 2011.
+
