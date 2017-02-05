@@ -1,10 +1,69 @@
-library("dplyr")
+# Read in data
+googledata <- read.csv("google_data.csv")
 
 
-data <- read.csv("data.csv", stringsAsFactors = FALSE)
-data<-tbl_df(data)
+# Required packages
+library(corrplot)
+library(dplyr)
+library(caret)
 
-data_arrivals <- filter(data, Variable=="A")
-data_nights <- filter(data, Variable=="N")
+#Set seed
+seed <-777
 
-rm("data")
+#Subset
+tour.arr.us.data <- select(googledata,date, starts_with("Tour.arr.US"))
+tour.arr.ven.data <- select(googledata,date, starts_with("Tour.arr.ven"))
+tour.arr.col.data <- select(googledata,date, starts_with("Tour.arr.col"))
+tour.arr.ned.data <- select(googledata,date, starts_with("Tour.arr.ned"))
+tour.arr.can.data <- select(googledata,date, starts_with("Tour.arr.can"))
+
+tour.nights.us.data <- select(googledata,date, starts_with("Tour.nights.US"))
+tour.nights.ven.data <- select(googledata,date, starts_with("Tour.nights.ven"))
+tour.nights.col.data <- select(googledata,date, starts_with("Tour.nights.col"))
+tour.nights.ned.data <- select(googledata,date, starts_with("Tour.nights.ned"))
+tour.nights.can.data <- select(googledata,date, starts_with("Tour.nights.can"))
+
+# calculate correlation matrix
+corMat_tour.arr.us.data <- cor(tour.arr.us.data[, -1])
+corrplot.mixed(corMat_tour.arr.us.data, order = "hclust", upper ="pie")
+
+corMat_tour.arr.ven.data <- cor(tour.arr.ven.data[, -1])
+corrplot(corMat_tour.arr.ven.data, order = "hclust")
+
+corMat_tour.arr.col.data <- cor(tour.arr.col.data[, -1])
+corrplot(corMat_tour.arr.col.data, order = "hclust")
+
+corMat_tour.arr.ned.data <- cor(tour.arr.ned.data[, -1])
+corrplot(corMat_tour.arr.ned.data, order = "hclust")
+
+corMat_tour.arr.can.data <- cor(tour.arr.can.data[, -1])
+corrplot(corMat_tour.arr.can.data, order = "hclust")
+
+
+corMat_tour.nights.us.data <- cor(tour.nights.us.data[, -1])
+corrplot(corMat_tour.nights.us.data, order = "hclust")
+
+corMat_tour.nights.ven.data <- cor(tour.nights.ven.data[, -1])
+corrplot(corMat_tour.nights.ven.data, order = "hclust")
+
+corMat_tour.nights.col.data <- cor(tour.nights.col.data[, -1])
+corrplot(corMat_tour.nights.col.data, order = "hclust")
+
+corMat_tour.nights.ned.data <- cor(tour.nights.ned.data[, -1])
+corrplot(corMat_tour.nights.ned.data, order = "hclust")
+
+corMat_tour.nights.can.data <- cor(tour.nights.can.data[, -1])
+corrplot(corMat_tour.nights.can.data, order = "hclust")
+
+# Principle component
+pca<-prcomp(googledata[, -1],center = TRUE,
+       scale. = TRUE) 
+print(pca)
+plot(pca, type="1")
+summary(pca)
+
+
+#Set seed
+set.seed(seed)
+# define the control using a random forest selection function with cross validation
+control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
