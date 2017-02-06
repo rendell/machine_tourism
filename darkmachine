@@ -1,0 +1,196 @@
+library(quantmod)
+library(ggplot2)
+library(ggthemes)
+library(grid)
+library(dplyr)
+library(glmnet)
+library(caret)
+library(caretEnsemble)
+library(randomForest)
+closeAllConnections()
+rm(list=ls())
+seed=5678
+##################################################################
+ 
+#Read in data
+ltg<-read.csv("traindata.csv")%>%
+  mutate(date=as.Date(as.character(date),"%d/%m/%Y"))
+ltc<-read.csv("predictdata.csv")%>%
+  mutate(date=as.Date(as.character(date),"%d/%m/%Y"))
+str(ltc)
+# Training data (ltg) based on Quarterly GDP observations, with all va1expressed in annual growth rates
+# Graphing/Prediction data (ltc) based on monthly observations of high-frequency predictors
+#################################################################
+
+
+#################################################################
+# Calibrate Learning models
+#################################################################
+# Elastic Net
+################################################################
+x<-as.matrix(ltg[,3:21])
+y<-as.matrix(ltg[,2])
+############################
+# Use Caret to search for alpha
+#############################
+eGrid <- expand.grid(.alpha = (0:20)*0.05, 
+                     .lambda = (0:50)*0.02)
+
+Control <- trainControl(method = "repeatedcv",repeats = 3,verboseIter =F, number=5)
+set.seed(seed)
+netFit <- train(x =x, y = y,
+                method = "glmnet",
+                lower=0,
+                tuneGrid = eGrid,
+                trControl = Control)
+alphafinal<-netFit$finalModel$tuneValue$alpha
+##Suggests alpha=.4
+#############################
+# Use glmnet to produce diagnostic plots, 
+# using caret values for alpha, and 
+# constraining coefficients to be greater than zero
+############################
+set.seed(seed)
+cvfit<-cv.glmnet(x,y, alpha=alphafinal, lower=0)
+lambdafinal<-cvfit$lambda.1se
+#############################
+# glmnet diagnostic plots and results
+par(mfrow=c(1,2))
+plot(cvfit, xlim=c(-7,1), ylim=c(0,1), main='')
+plot(glmnet(x,y, family="gaussian", alpha=alphafinal, lower=0), xvar="lambda", label=F, xlim=c(-7,1), main='')
+abline(v=log(lambdafinal))
+par(mfrow=c(1,1))
+coef(cvfit, s="lambda.1se")
+############################
+
+###########################
+# Plot monthly Elastic net predictions, and 
+# build datasets for in and out of sample
+###########################
+pd<-cbind(ltg[,c("date","gdp")],predict(cvfit, newx=x, s="lambda.1se"))
+names(pd)[3]<-"predicted"
+
+
+enplot<-ltc%>%
+  select(-c(date))%>%
+  zoo(ltc$date)%>%
+  rollmean(12,align="right", fill=NA)%>%
+  lapply(Delt,k=12)%>%
+  lapply("*",100)%>%
+  data.frame()%>%
+  cbind(ltc$date)
+names(enplot)[21]<-"date"
+enpredx<-enplot%>%
+  filter(date>=as.Date("1997/12/1"))%>%
+  select(-cpi)
+enpredy<-cbind(enpredx$date,data.frame(predict(cvfit, newx=as.matrix(enpredx[-20]), s="lambda.1se")))
+names(enpredy)<-c("date", "growth")
+plot(enpredy$date,enpredy$growth, type="l", col=2, xlab="", ylab="GDP growth", main="Elastic Net")
+points(pd$date,pd$gdp)
+entrain<-enpredy%>%
+  filter(date<=as.Date("2010/12/1"))
+entest<-enpredy%>%
+  filter(date>as.Date("2010/12/1"))
+tail(entest)
+######################################################################################
+#Random forest
+#####################################################################################
+
+
+y<-ltg$gdp
+x<-ltg%>%
+  select(-gdp, -date)
+set.seed(seed)
+fit<-randomForest(x,y, data=ltg, ntree=2000)
+fit
+set.seed(seed)
+
+par(mfrow=c(1,2))
+plot(fit, main='')
+varImpPlot(fit, main='')
+par(mfrow=c(1,1))
+pd<-cbind(ltg[,c("date","gdp")],fit$predicted)
+
+
+rfplot<-ltc%>%
+  select(-c(date))%>%
+  zoo(ltc$date)%>%
+  rollmean(12,align="right", fill=NA)%>%
+  lapply(Delt,k=12)%>%
+  lapply("*",100)%>%
+  data.frame()%>%
+  cbind(ltc$date)
+names(rfplot)[21]<-"date"
+rfpredx<-rfplot%>%
+  filter(date>=as.Date("1997/12/1"))%>%
+  select(-gdp)
+rfpredy<-cbind(rfpredx$date,data.frame(predict(fit,rfpredx[,-20])))
+names(rfpredy)<-c("date", "growth")
+plot(rfpredy$date,rfpredy$growth, type="l", col=2, xlab="", ylab="GDP growth", main="Random Forests")
+points(pd$date,pd$gdp)
+rftrain<-rfpredy%>%
+  filter(date<=as.Date("2010/12/1"))
+rftest<-rfpredy%>%
+  filter(date>as.Date("2010/12/1"))
+tail(rftest)
+#####################################################################################
+# Ensemble Model
+#####################################################################################
+
+###################################
+# Use caretEnsemble to build ensemble of 
+# elastic net and random forests,
+# by selecting simple weighted average, via cross validation
+##################################
+x<-as.matrix(ltg[,3:21])
+y<-as.matrix(ltg[,2])
+y<-ltg[,2]
+set.seed(seed)
+model_list <- caretList(x =x, y = y,
+                        trControl = Control,
+                        tuneList=list(
+                          en1=caretModelSpec(method='glmnet', tuneGrid=data.frame(.alpha=alphafinal,.lambda=lambdafinal),lower=0),
+                          rf=caretModelSpec(method='rf', tuneGrid=data.frame(.mtry=6), ntree=2000)))
+
+modelCor(resamples(model_list))
+set.seed(seed)
+ensemble<-caretEnsemble(model_list)
+summary(ensemble)
+
+alphafinal
+lambdafinal
+enweight<-ensemble$weights[1]
+rfweight<-ensemble$weights[2]
+#################################
+# Build monthly ensemble predictions,
+#################################
+
+fullpred<-enpredy%>%
+  left_join(rfpredy, "date")%>%
+  left_join(ltg[,c("date","gdp")],"date")%>%
+  mutate(ensemble=enweight*growth.x+rfweight*growth.y)
+names(fullpred)<-c("date", "elastic.net", "random.forests", "actual", "ensemble")
+
+##################################
+# Add out of sample annual results from 
+# Lebanese statistics agency
+##################################
+fullpred[which(fullpred$date==as.Date("2011/12/1")),c("actual")]<-0.9
+fullpred[which(fullpred$date==as.Date("2012/12/1")),c("actual")]<-2.8
+fullpred[which(fullpred$date==as.Date("2013/12/1")),c("actual")]<-3.0
+tail(fullpred)
+##################################
+# Nice ggplot of ensemble
+##################################
+gens<-ggplot(fullpred)+geom_point(aes(y=elastic.net, x=date), size=4, color=rgb(244,109,67, max=255), alpha=.5, position = position_jitter())
+gens<-gens+geom_line(aes(y=ensemble, x=date), size=1.3, color=rgb(215,48,39, max=255))
+gens<-gens+geom_point(aes(y=random.forests, x=date), size=4, color=rgb(69,117,180, max=255), alpha=.5, position = position_jitter())
+gens<-gens+geom_point(aes(y=actual, x=date), size=5, color="black")
+gens<-gens+theme_economist_white(gray_bg=FALSE)+ylab("GDP Growth (percent)")+xlab(" ")
+gens
+model_list$en1
+model_list$rf
+###############################################################################################
+sessionInfo()
+###############################################################################################
+
