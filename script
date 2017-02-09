@@ -1,6 +1,13 @@
-# Read in data
+receipts <- read.csv("quarterly_receipts.csv")# Read in data
 googledata <- read.csv("google_data.csv")
 
+       
+# convert to time series and YOY quarterly growth
+quarterly_receipts <- ts(receipts$Tourism.receipts, start=c(2005, 1), end=c(2016, 3), frequency=4) 
+
+summary(quarterly_receipts)
+receipts_yoy <- diff(quarterly_receipts, lag=4)/ lag(quarterly_receipts, k=-4)*100
+summary(receipts_yoy)       
 
 # Required packages
 library(corrplot)
@@ -54,13 +61,20 @@ corrplot(corMat_tour.nights.ned.data, order = "hclust")
 
 corMat_tour.nights.can.data <- cor(tour.nights.can.data[, -1])
 corrplot(corMat_tour.nights.can.data, order = "hclust")
-
+       
+       
 # Principle component
 pca<-prcomp(googledata[, -1],center = TRUE,
        scale. = TRUE) 
 print(pca)
-plot(pca, type="1")
+screeplot(pca, type="lines")
 summary(pca)
+pca1<-pca$x[,1]
+pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+td <-td(receipts_yoy ~ pca1)
+receipts_monthly <- predict(td)
+googledata$receipts_monthly <- as.data.frame(receipts_monthly)       
+       
 
 
 #Set seed
