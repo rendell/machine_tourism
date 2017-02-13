@@ -1,11 +1,16 @@
-# Read in data
-receipts <- read.csv("quarterly_receipts.csv")
+reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
 wordcloud <- read.csv("wordcloud.csv")
+arrivals_nights <- read.csv("arrivals_nights.csv")
 
 # convert to time series
-quarterly_receipts <- ts(receipts$Tourism.receipts, 
-                         start=c(2005, 1), end=c(2016, 3), frequency=4) 
+quarterly_reciepts <- ts(reciepts$Tourism.receipts, start=c(2005, 1), end=c(2016, 4), frequency=4) 
+tot_arrivals <- ts(arrivals_nights$Arrivals, start=c(2004,1), end=c(2016,12), frequency=12)
+tot_nights <- ts(arrivals_nights$Nights, start=c(2004,1), end=c(2016,12), frequency=12)
+time <- ts(arrivals_nights$time, start=c(2004,1), end=c(2016,12), frequency=12)
+d1 <- ts(arrivals_nights$d1, start=c(2004,1), end=c(2016,12), frequency=12)
+d2 <- ts(arrivals_nights$d2, start=c(2004,1), end=c(2016,12), frequency=12)
+d3 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
 
 # Required packages
 library(corrplot)
@@ -17,13 +22,13 @@ library(RColorBrewer)
 
 #Set seed
 seed <-777
-            
+
 #Wordcloud
 pal <- brewer.pal(9, "Dark2")
 wordcloud(words = wordcloud$Word, freq = wordcloud$Freq, min.freq = 1,
           , random.order=FALSE, rot.per=0.35, 
-          colors=pal)           
-            
+          colors=pal)
+
 #Subset
 tour.us.data  <- select(googletrends,contains("United.States"))
 tour.ven.data <- select(googletrends,contains("Venezuela"))
@@ -44,42 +49,36 @@ corrplot.mixed(corMat_tour.col.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.ned.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
 
-# Principle component
-pca<-prcomp(googletrends[, -1],center = TRUE,
-            
-            scale. = TRUE) 
-print(pca)
-screeplot(pca, type="lines")
-screeplot(pca)
-summary(pca)
-
-pca1 <- pca$x [,1]
-pca2 <- pca$x [,2]
-pca3 <- pca$x [,3]
-pca4 <- pca$x [,4]
-pca4 <- pca$x [,5]
-
-pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-pca2 <- ts(pca2, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-
-td <-td(quarterly_receipts ~ pca1 + pca2 + pca3 + pca4 + pca5)
-td <-td(quarterly_receipts ~ pca1 +  pca3)
-
-pcagraph <- cbind(pca1, pca3)
-dygraph(pcagraph, main="Principle component series")
-
-receipts_monthly <- predict(td)
+# Chow-Lin disaggregation
+td <- td(quarterly_reciepts ~  tot_arrivals + tot_nights + time + d1 + d3,
+         conversion = "sum", to = "monthly", method = "chow-lin-minrss-ecotrim")
+reciepts_monthly <- predict(td)
 summary(td)
 plot(td)
 
-receipts_yoy <- diff(receipts_monthly/ (lag(receipts_monthly,12)))*100
-summary(receipts_yoy)
-dygraph(receipts_yoy, main="Tourism reciepts YOY growth")
+graph_decomposition_fit <- dygraph(cbind(td$actual, td$fitted.values, main="Chow-Lin disaggregation fit"))%>%
+        dyAxis("y", label = "In Afl. million")
 
-# not sure about this one
+graph_monthly_reciepts <- dygraph(reciepts_monthly, main="Chow-Lin disaggregation")%>%
+        dyOptions(fillGraph = TRUE, fillAlpha = 0.4) %>%
+        dyAxis("y", label = "In Afl. million") %>%
+        dyOptions( fillGraph = TRUE, drawGrid = FALSE)
+
+graph_decomposition_fit
+graph_monthly_reciepts
+
+reciepts_yoy <- diff(reciepts_monthly/ (lag(reciepts_monthly,12)))*100
+dygraph(reciepts_yoy, main="Reciepts monthly growth")%>%
+        dyAxis("y", label = "In percentage")%>% 
+        dyRangeSelector()%>%
+        dyShading(from = "2016-9-1", to = "2016-12-30")
+
+reciepts_yoy
+
+# not sure about these
+#receipts_yoy <- diff(receipts_monthly/ (lag(receipts_monthly,12)))*100
+#summary(receipts_yoy)
+#dygraph(receipts_yoy, main="Tourism reciepts YOY growth")
 #googletrends$receipts_monthly <- as.data.frame(receipts_monthly)       
 
 #Set seed
@@ -99,7 +98,6 @@ plot(fit, main='')
 varImpPlot(fit, main='')
 par(mfrow=c(1,1))
 pd<-cbind(ltg[,c("date","gdp")],fit$predicted)
-
 
 rfplot<-ltc%>%
         select(-c(date))%>%
@@ -123,8 +121,7 @@ rftest<-rfpredy%>%
         filter(date>as.Date("2010/12/1"))
 tail(rftest)
 
-
-
 # (don't remember where this is coming from)
 #define the control using a random forest selection function with cross validation
 #control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+
