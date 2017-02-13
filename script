@@ -1,83 +1,119 @@
 receipts <- read.csv("quarterly_receipts.csv")# Read in data
-googledata <- read.csv("google_data.csv")
+googletrends <- read.csv("google_trends.csv")
 
-       
-# convert to time series and YOY quarterly growth
+# convert to time series
 quarterly_receipts <- ts(receipts$Tourism.receipts, start=c(2005, 1), end=c(2016, 3), frequency=4) 
-
-summary(quarterly_receipts)
-receipts_yoy <- diff(quarterly_receipts, lag=4)/ lag(quarterly_receipts, k=-4)*100
-summary(receipts_yoy)       
 
 # Required packages
 library(corrplot)
 library(dplyr)
 library(caret)
+library(dygraphs)
 
 #Set seed
 seed <-777
 
 #Subset
-tour.arr.us.data <- select(googledata,date, starts_with("Tour.arr.US"))
-tour.arr.ven.data <- select(googledata,date, starts_with("Tour.arr.ven"))
-tour.arr.col.data <- select(googledata,date, starts_with("Tour.arr.col"))
-tour.arr.ned.data <- select(googledata,date, starts_with("Tour.arr.ned"))
-tour.arr.can.data <- select(googledata,date, starts_with("Tour.arr.can"))
+tour.us.data  <- select(googletrends,contains("United.States"))
+tour.ven.data <- select(googletrends,contains("Venezuela"))
+tour.col.data <- select(googletrends,contains("Colombia"))
+tour.ned.data <- select(googletrends,contains("Netherlands"))
+tour.can.data <- select(googletrends,contains("Canada"))
 
-tour.nights.us.data <- select(googledata,date, starts_with("Tour.nights.US"))
-tour.nights.ven.data <- select(googledata,date, starts_with("Tour.nights.ven"))
-tour.nights.col.data <- select(googledata,date, starts_with("Tour.nights.col"))
-tour.nights.ned.data <- select(googledata,date, starts_with("Tour.nights.ned"))
-tour.nights.can.data <- select(googledata,date, starts_with("Tour.nights.can"))
+# calculate and plot correlation matrix
+corMat_tour.us.data <- cor(tour.us.data[, -1])
+corMat_tour.ven.data <- cor(tour.ven.data[, -1])
+corMat_tour.col.data <- cor(tour.col.data[, -1])
+corMat_tour.ned.data <- cor(tour.ned.data[, -1])
+corMat_tour.can.data <- cor(tour.can.data[, -1])
 
-# calculate correlation matrix
-corMat_tour.arr.us.data <- cor(tour.arr.us.data[, -1])
-corrplot.mixed(corMat_tour.arr.us.data, order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.us.data,  order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.ven.data, order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.col.data, order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.ned.data, order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
 
-corMat_tour.arr.ven.data <- cor(tour.arr.ven.data[, -1])
-corrplot(corMat_tour.arr.ven.data, order = "hclust")
-
-corMat_tour.arr.col.data <- cor(tour.arr.col.data[, -1])
-corrplot(corMat_tour.arr.col.data, order = "hclust")
-
-corMat_tour.arr.ned.data <- cor(tour.arr.ned.data[, -1])
-corrplot(corMat_tour.arr.ned.data, order = "hclust")
-
-corMat_tour.arr.can.data <- cor(tour.arr.can.data[, -1])
-corrplot(corMat_tour.arr.can.data, order = "hclust")
-
-
-corMat_tour.nights.us.data <- cor(tour.nights.us.data[, -1])
-corrplot(corMat_tour.nights.us.data, order = "hclust")
-
-corMat_tour.nights.ven.data <- cor(tour.nights.ven.data[, -1])
-corrplot(corMat_tour.nights.ven.data, order = "hclust")
-
-corMat_tour.nights.col.data <- cor(tour.nights.col.data[, -1])
-corrplot(corMat_tour.nights.col.data, order = "hclust")
-
-corMat_tour.nights.ned.data <- cor(tour.nights.ned.data[, -1])
-corrplot(corMat_tour.nights.ned.data, order = "hclust")
-
-corMat_tour.nights.can.data <- cor(tour.nights.can.data[, -1])
-corrplot(corMat_tour.nights.can.data, order = "hclust")
-       
-       
 # Principle component
-pca<-prcomp(googledata[, -1],center = TRUE,
-       scale. = TRUE) 
+pca<-prcomp(googletrends[, -1],center = TRUE,
+            
+            scale. = TRUE) 
 print(pca)
 screeplot(pca, type="lines")
+screeplot(pca)
 summary(pca)
-pca1<-pca$x[,1]
-pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
-td <-td(receipts_yoy ~ pca1)
-receipts_monthly <- predict(td)
-googledata$receipts_monthly <- as.data.frame(receipts_monthly)       
-       
 
+pca1 <- pca$x [,1]
+pca2 <- pca$x [,2]
+pca3 <- pca$x [,3]
+pca4 <- pca$x [,4]
+pca4 <- pca$x [,5]
+
+pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+pca2 <- ts(pca2, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12) 
+
+td <-td(quarterly_receipts ~ pca1 + pca2 + pca3 + pca4 + pca5)
+td <-td(quarterly_receipts ~ pca1 +  pca3)
+
+pcagraph <- cbind(pca1, pca3)
+dygraph(pcagraph, main="Principle component series")
+
+receipts_monthly <- predict(td)
+summary(td)
+plot(td)
+
+receipts_yoy <- diff(receipts_monthly/ (lag(receipts_monthly,12)))*100
+summary(receipts_yoy)
+dygraph(receipts_yoy, main="Tourism reciepts YOY growth")
+
+# not sure about this one
+#googletrends$receipts_monthly <- as.data.frame(receipts_monthly)       
 
 #Set seed
 set.seed(seed)
-# define the control using a random forest selection function with cross validation
-control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+
+# Machine learning not working just yet
+y<-receipts_yoy
+x<-googletrends%>%
+        select(-Month)
+set.seed(seed)
+fit<-randomForest(x,y, data=googletrends, ntree=2000)
+fit
+set.seed(seed)
+
+par(mfrow=c(1,2))
+plot(fit, main='')
+varImpPlot(fit, main='')
+par(mfrow=c(1,1))
+pd<-cbind(ltg[,c("date","gdp")],fit$predicted)
+
+
+rfplot<-ltc%>%
+        select(-c(date))%>%
+        zoo(ltc$date)%>%
+        rollmean(12,align="right", fill=NA)%>%
+        lapply(Delt,k=12)%>%
+        lapply("*",100)%>%
+        data.frame()%>%
+        cbind(ltc$date)
+names(rfplot)[21]<-"date"
+rfpredx<-rfplot%>%
+        filter(date>=as.Date("1997/12/1"))%>%
+        select(-gdp)
+rfpredy<-cbind(rfpredx$date,data.frame(predict(fit,rfpredx[,-20])))
+names(rfpredy)<-c("date", "growth")
+plot(rfpredy$date,rfpredy$growth, type="l", col=2, xlab="", ylab="GDP growth", main="Random Forests")
+points(pd$date,pd$gdp)
+rftrain<-rfpredy%>%
+        filter(date<=as.Date("2010/12/1"))
+rftest<-rfpredy%>%
+        filter(date>as.Date("2010/12/1"))
+tail(rftest)
+
+
+
+# (don't remember where this is coming from)
+#define the control using a random forest selection function with cross validation
+#control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
