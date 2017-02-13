@@ -1,18 +1,29 @@
-receipts <- read.csv("quarterly_receipts.csv")# Read in data
+# Read in data
+receipts <- read.csv("quarterly_receipts.csv")
 googletrends <- read.csv("google_trends.csv")
+wordcloud <- read.csv("wordcloud.csv")
 
 # convert to time series
-quarterly_receipts <- ts(receipts$Tourism.receipts, start=c(2005, 1), end=c(2016, 3), frequency=4) 
+quarterly_receipts <- ts(receipts$Tourism.receipts, 
+                         start=c(2005, 1), end=c(2016, 3), frequency=4) 
 
 # Required packages
 library(corrplot)
 library(dplyr)
 library(caret)
 library(dygraphs)
+library(wordcloud)
+library(RColorBrewer)
 
 #Set seed
 seed <-777
-
+            
+#Wordcloud
+pal <- brewer.pal(9, "Dark2")
+wordcloud(words = wordcloud$Word, freq = wordcloud$Freq, min.freq = 1,
+          , random.order=FALSE, rot.per=0.35, 
+          colors=pal)           
+            
 #Subset
 tour.us.data  <- select(googletrends,contains("United.States"))
 tour.ven.data <- select(googletrends,contains("Venezuela"))
