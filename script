@@ -19,6 +19,7 @@ library(caret)
 library(dygraphs)
 library(wordcloud)
 library(RColorBrewer)
+library(tempdisagg)
 
 #Set seed
 seed <-777
@@ -52,7 +53,7 @@ corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
 # Chow-Lin disaggregation
 td <- td(quarterly_reciepts ~  tot_arrivals + tot_nights + time + d1 + d3,
          conversion = "sum", to = "monthly", method = "chow-lin-minrss-ecotrim")
-reciepts_monthly <- predict(td)
+monthly_reciepts <- predict(td)
 summary(td)
 plot(td)
 
@@ -99,6 +100,7 @@ varImpPlot(fit, main='')
 par(mfrow=c(1,1))
 pd<-cbind(ltg[,c("date","gdp")],fit$predicted)
 
+
 rfplot<-ltc%>%
         select(-c(date))%>%
         zoo(ltc$date)%>%
@@ -124,4 +126,3 @@ tail(rftest)
 # (don't remember where this is coming from)
 #define the control using a random forest selection function with cross validation
 #control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
-
