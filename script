@@ -1,5 +1,8 @@
 cat("\014")
 
+#Set seed
+seed <-777
+
 # Required packages
 library(corrplot)
 library(dplyr)
@@ -9,6 +12,7 @@ library(wordcloud)
 library(RColorBrewer)
 library(tempdisagg)
 library(xts)
+library(randomForest)
 
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
@@ -28,10 +32,6 @@ d3 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
 googletrends$Month <- as.Date(as.factor(googletrends$Month), format("%Y%m%d"))
 # Convert to xts
 x <- xts(googletrends, order.by = googletrends$Month) 
-
-
-#Set seed
-seed <-777
 
 #Wordcloud
 pal <- brewer.pal(9, "Dark2")
@@ -76,69 +76,21 @@ graph_monthly_reciepts <- dygraph(reciepts_monthly, main="Chow-Lin disaggregatio
 
 graph_decomposition_fit
 graph_monthly_reciepts
+
+#data wrangling
 monthly_reciepts_d <- diff(monthly_reciepts, differences=1)
+monthly_reciepts_d <- as.xts(monthly_reciepts_d)
+X <- merge(monthly_reciepts_d, x)
+X <- X[,-2]
+y <- X$monthly_reciepts_d
 
 # create timeControl
 myTimeControl <- trainControl(method = "timeslice",initialWindow = 36,
                               horizon = 12,fixedWindow = TRUE)
 
-
-
-# not working
-reciepts_yoy <- diff(reciepts_monthly/ (lag(reciepts_monthly,12)))*100
-dygraph(reciepts_yoy, main="Reciepts monthly growth")%>%
-        dyAxis("y", label = "In percentage")%>% 
-        dyRangeSelector()%>%
-        dyShading(from = "2016-9-1", to = "2016-12-30")
-reciepts_yoy
-
-# not sure about these
-#receipts_yoy <- diff(receipts_monthly/ (lag(receipts_monthly,12)))*100
-#summary(receipts_yoy)
-#dygraph(receipts_yoy, main="Tourism reciepts YOY growth")
-#googletrends$receipts_monthly <- as.data.frame(receipts_monthly)       
-
-#Set seed
+# Random forest
 set.seed(seed)
-
-# Machine learning not working just yet
-y<-receipts_yoy
-x<-googletrends%>%
-        select(-Month)
-set.seed(seed)
-fit<-randomForest(x,y, data=googletrends, ntree=2000)
-fit
-set.seed(seed)
-
-par(mfrow=c(1,2))
-plot(fit, main='')
-varImpPlot(fit, main='')
-par(mfrow=c(1,1))
-pd<-cbind(ltg[,c("date","gdp")],fit$predicted)
-
-
-rfplot<-ltc%>%
-        select(-c(date))%>%
-        zoo(ltc$date)%>%
-        rollmean(12,align="right", fill=NA)%>%
-        lapply(Delt,k=12)%>%
-        lapply("*",100)%>%
-        data.frame()%>%
-        cbind(ltc$date)
-names(rfplot)[21]<-"date"
-rfpredx<-rfplot%>%
-        filter(date>=as.Date("1997/12/1"))%>%
-        select(-gdp)
-rfpredy<-cbind(rfpredx$date,data.frame(predict(fit,rfpredx[,-20])))
-names(rfpredy)<-c("date", "growth")
-plot(rfpredy$date,rfpredy$growth, type="l", col=2, xlab="", ylab="GDP growth", main="Random Forests")
-points(pd$date,pd$gdp)
-rftrain<-rfpredy%>%
-        filter(date<=as.Date("2010/12/1"))
-rftest<-rfpredy%>%
-        filter(date>as.Date("2010/12/1"))
-tail(rftest)
-
-# (don't remember where this is coming from)
-#define the control using a random forest selection function with cross validation
-#control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+rf <- randomForest(monthly_reciepts_d ~ ., data= X, importance=TRUE,
+                         proximity=TRUE,
+                   na.action=na.omit)
+print(rf)
