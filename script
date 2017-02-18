@@ -1,3 +1,15 @@
+cat("\014")
+
+# Required packages
+library(corrplot)
+library(dplyr)
+library(caret)
+library(dygraphs)
+library(wordcloud)
+library(RColorBrewer)
+library(tempdisagg)
+library(xts)
+
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
 wordcloud <- read.csv("wordcloud.csv")
@@ -12,14 +24,11 @@ d1 <- ts(arrivals_nights$d1, start=c(2004,1), end=c(2016,12), frequency=12)
 d2 <- ts(arrivals_nights$d2, start=c(2004,1), end=c(2016,12), frequency=12)
 d3 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
 
-# Required packages
-library(corrplot)
-library(dplyr)
-library(caret)
-library(dygraphs)
-library(wordcloud)
-library(RColorBrewer)
-library(tempdisagg)
+# Convert to date
+googletrends$Month <- as.Date(as.factor(googletrends$Month), format("%Y%m%d"))
+# Convert to xts
+x <- xts(googletrends, order.by = googletrends$Month) 
+
 
 #Set seed
 seed <-777
@@ -63,17 +72,24 @@ graph_decomposition_fit <- dygraph(cbind(td$actual, td$fitted.values, main="Chow
 graph_monthly_reciepts <- dygraph(reciepts_monthly, main="Chow-Lin disaggregation")%>%
         dyOptions(fillGraph = TRUE, fillAlpha = 0.4) %>%
         dyAxis("y", label = "In Afl. million") %>%
-        dyOptions( fillGraph = TRUE, drawGrid = FALSE)
+        dyOptions( fillGraph = TRUE, drawGrid = FALSE) 
 
 graph_decomposition_fit
 graph_monthly_reciepts
+monthly_reciepts_d <- diff(monthly_reciepts, differences=1)
 
+# create timeControl
+myTimeControl <- trainControl(method = "timeslice",initialWindow = 36,
+                              horizon = 12,fixedWindow = TRUE)
+
+
+
+# not working
 reciepts_yoy <- diff(reciepts_monthly/ (lag(reciepts_monthly,12)))*100
 dygraph(reciepts_yoy, main="Reciepts monthly growth")%>%
         dyAxis("y", label = "In percentage")%>% 
         dyRangeSelector()%>%
         dyShading(from = "2016-9-1", to = "2016-12-30")
-
 reciepts_yoy
 
 # not sure about these
