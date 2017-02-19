@@ -13,6 +13,9 @@ library(RColorBrewer)
 library(tempdisagg)
 library(xts)
 library(randomForest)
+library(RSNNS)
+library(pls)
+ 
 
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
@@ -69,7 +72,7 @@ plot(td)
 graph_decomposition_fit <- dygraph(cbind(td$actual, td$fitted.values, main="Chow-Lin disaggregation fit"))%>%
         dyAxis("y", label = "In Afl. million")
 
-graph_monthly_reciepts <- dygraph(reciepts_monthly, main="Chow-Lin disaggregation")%>%
+graph_monthly_reciepts <- dygraph(monthly_reciepts, main="Chow-Lin disaggregation")%>%
         dyOptions(fillGraph = TRUE, fillAlpha = 0.4) %>%
         dyAxis("y", label = "In Afl. million") %>%
         dyOptions( fillGraph = TRUE, drawGrid = FALSE) 
@@ -84,13 +87,24 @@ X <- merge(monthly_reciepts_d, x)
 X <- X[,-2]
 y <- X$monthly_reciepts_d
 
-# create timeControl
-myTimeControl <- trainControl(method = "timeslice",initialWindow = 36,
-                              horizon = 12,fixedWindow = TRUE)
+# create time slice
+myTimeControl <- createTimeSlices(X, initialWindow=36, horizon = 12, fixedWindow = TRUE,
+                 skip = 0)
+
+plsFitTime <- train(monthly_reciepts_d ~ .,
+                  data = X,
+                  method = "pls",
+                  preProc = c("center", "scale"),
+                  trControl = myTimeControl)
 
 # Random forest
 set.seed(seed)
 rf <- randomForest(monthly_reciepts_d ~ ., data= X, importance=TRUE,
                          proximity=TRUE,
-                   na.action=na.omit)
+                   na.action=na.omit,
+                   ntree=2000)
 print(rf)
+plot(rf, main='')
+varImpPlot(rf, main='')
+
+#Nueral net
