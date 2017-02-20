@@ -60,7 +60,20 @@ corrplot.mixed(corMat_tour.us.data,  order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.ven.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.col.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.ned.data, order = "hclust", upper ="pie")
-corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
+ridership.nnetar <- nnetar(train.ts, repeats = 20, p = 11, P = 1, size = 7) 
+summary(ridership.nnetar$model[[1]]) 
+ridership.nnetar.pred <- forecast(ridership.nnetar, h = nValid) 
+accuracy(ridership.nnetar.pred, valid.ts) 
+plot(train.ts, ylim = c(1300, 2900), ylab = "Ridership", 
+     xlab = "Time", bty = "l", xaxt = "n", 
+     xlim = c(1991,2006.25), lty = 1) 
+axis(1, at = seq(1991, 2006, 1), 
+     labels = format(seq(1991, 2006, 1))) 
+lines(ridership.nnetar.pred$fitted, 
+      lwd = 2, col = "blue") 
+lines(ridership.nnetar.pred$mean, 
+      lwd = 2, col = "blue", lty = 2) 
+lines(valid.ts)corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
 
 # Chow-Lin disaggregation
 td <- td(quarterly_reciepts ~  tot_arrivals + tot_nights + time + d1 + d3,
@@ -131,3 +144,17 @@ varImpPlot(rf, main='')
 
 #Nueral net
 set.seed(seed)
+ridership.nnetar <- nnetar(train.ts, repeats = 20, p = 11, P = 1, size = 7) 
+summary(ridership.nnetar$model[[1]]) 
+ridership.nnetar.pred <- forecast(ridership.nnetar, h = nValid) 
+accuracy(ridership.nnetar.pred, valid.ts) 
+plot(train.ts, ylim = c(1300, 2900), ylab = "Ridership", 
+     xlab = "Time", bty = "l", xaxt = "n", 
+     xlim = c(1991,2006.25), lty = 1) 
+axis(1, at = seq(1991, 2006, 1), 
+     labels = format(seq(1991, 2006, 1))) 
+lines(ridership.nnetar.pred$fitted, 
+      lwd = 2, col = "blue") 
+lines(ridership.nnetar.pred$mean, 
+      lwd = 2, col = "blue", lty = 2) 
+lines(valid.ts)
