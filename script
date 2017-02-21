@@ -15,6 +15,8 @@ library(xts)
 library(randomForest)
 library(RSNNS)
 library(pls)
+library(forecast)
+library(CombMSC)
  
 
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
@@ -60,20 +62,7 @@ corrplot.mixed(corMat_tour.us.data,  order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.ven.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.col.data, order = "hclust", upper ="pie")
 corrplot.mixed(corMat_tour.ned.data, order = "hclust", upper ="pie")
-ridership.nnetar <- nnetar(train.ts, repeats = 20, p = 11, P = 1, size = 7) 
-summary(ridership.nnetar$model[[1]]) 
-ridership.nnetar.pred <- forecast(ridership.nnetar, h = nValid) 
-accuracy(ridership.nnetar.pred, valid.ts) 
-plot(train.ts, ylim = c(1300, 2900), ylab = "Ridership", 
-     xlab = "Time", bty = "l", xaxt = "n", 
-     xlim = c(1991,2006.25), lty = 1) 
-axis(1, at = seq(1991, 2006, 1), 
-     labels = format(seq(1991, 2006, 1))) 
-lines(ridership.nnetar.pred$fitted, 
-      lwd = 2, col = "blue") 
-lines(ridership.nnetar.pred$mean, 
-      lwd = 2, col = "blue", lty = 2) 
-lines(valid.ts)corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
+corrplot.mixed(corMat_tour.can.data, order = "hclust", upper ="pie")
 
 # Chow-Lin disaggregation
 td <- td(quarterly_reciepts ~  tot_arrivals + tot_nights + time + d1 + d3,
@@ -92,6 +81,7 @@ graph_monthly_reciepts <- dygraph(monthly_reciepts, main="Chow-Lin disaggregatio
 
 graph_decomposition_fit
 graph_monthly_reciepts
+
 monthly_reciepts_components <- decompose(monthly_reciepts)
 plot(monthly_reciepts_components)
 
@@ -102,6 +92,7 @@ monthly_reciepts_d <- as.xts(monthly_reciepts_d)
 X <- merge(monthly_reciepts_d, x)
 X <- X[,-2]
 y <- X$monthly_reciepts_d
+x <- x[,-1]
 
 # Principle component 
 pca<-prcomp(googletrends[, -1],center = TRUE, 
@@ -122,6 +113,9 @@ pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12)
 pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)
 
+pcas <- cbind(pca1,pca2,pca3,pca4,pca5)
+plot_pca <- dygraph(pcas, main = "Principle components")
+
 # create time slice
 myTimeControl <- createTimeSlices(X, initialWindow=36, horizon = 12, fixedWindow = TRUE,
                  skip = 0)
@@ -131,6 +125,11 @@ plsFitTime <- train(monthly_reciepts_d ~ .,
                   method = "pls",
                   preProc = c("center", "scale"),
                   trControl = myTimeControl)
+
+reciepts.split <- splitTrainTest(monthly_reciepts,numTrain = length(monthly_reciepts) - 24)
+
+
+
 
 # Random forest
 set.seed(seed)
@@ -144,17 +143,23 @@ varImpPlot(rf, main='')
 
 #Nueral net
 set.seed(seed)
-ridership.nnetar <- nnetar(train.ts, repeats = 20, p = 11, P = 1, size = 7) 
-summary(ridership.nnetar$model[[1]]) 
-ridership.nnetar.pred <- forecast(ridership.nnetar, h = nValid) 
-accuracy(ridership.nnetar.pred, valid.ts) 
-plot(train.ts, ylim = c(1300, 2900), ylab = "Ridership", 
-     xlab = "Time", bty = "l", xaxt = "n", 
-     xlim = c(1991,2006.25), lty = 1) 
-axis(1, at = seq(1991, 2006, 1), 
-     labels = format(seq(1991, 2006, 1))) 
-lines(ridership.nnetar.pred$fitted, 
+
+#Neural network autoregression
+reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=11,P=1,size=7)
+summary(reciepts.nnetar$model[[1]])
+reciepts.nnetar.pred <- forecast(reciepts.split$train, h=24)
+accuracy(reciepts.nnetar.pred, reciepts.split$test)
+
+
+plot(reciepts.split$train)
+lines(reciepts.nnetar.pred$fitted, 
       lwd = 2, col = "blue") 
-lines(ridership.nnetar.pred$mean, 
+lines(reciepts.nnetar.pred$mean, 
       lwd = 2, col = "blue", lty = 2) 
-lines(valid.ts)
+lines(reciepts.split$test)
+
+graph_nnetar <- dygraph(cbind(reciepts.split$train,
+                              reciepts.nnetar.pred$fitted,
+                              reciepts.nnetar.pred$mean,
+                              reciepts.split$test))
+graph_nnetar
