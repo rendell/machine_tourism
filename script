@@ -107,6 +107,7 @@ pca3 <- pca$x [,3]
 pca4 <- pca$x [,4] 
 pca5 <- pca$x [,5] 
 
+
 pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
 pca2 <- ts(pca2, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12)  
@@ -114,7 +115,7 @@ pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)
 pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)
 
 pcas <- cbind(pca1,pca2,pca3,pca4,pca5)
-plot_pca <- dygraph(pcas, main = "Principle components")
+# avNNet()plot_pca <- dygraph(pcas, main = "Principle components")
 
 # create time slice
 myTimeControl <- createTimeSlices(X, initialWindow=36, horizon = 12, fixedWindow = TRUE,
@@ -165,3 +166,5 @@ graph_nnetar <- dygraph(cbind(reciepts.split$train,
         dyShading(from = "2004-1-1", to = "2014-12-12", color = "#FFE6E6") %>%
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_nnetar
+
+#avNNet()
