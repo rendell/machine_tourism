@@ -147,7 +147,7 @@ set.seed(seed)
 #Neural network autoregression
 reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=11,P=1,size=7)
 summary(reciepts.nnetar$model[[1]])
-reciepts.nnetar.pred <- forecast(reciepts.split$train, h=24)
+reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
 accuracy(reciepts.nnetar.pred, reciepts.split$test)
 
 
@@ -161,5 +161,7 @@ lines(reciepts.split$test)
 graph_nnetar <- dygraph(cbind(reciepts.split$train,
                               reciepts.nnetar.pred$fitted,
                               reciepts.nnetar.pred$mean,
-                              reciepts.split$test))
+                              reciepts.split$test))%>%
+        dyShading(from = "2004-1-1", to = "2014-12-12", color = "#FFE6E6") %>%
+        dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_nnetar
