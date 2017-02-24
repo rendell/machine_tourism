@@ -22,6 +22,7 @@ reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
 wordcloud <- read.csv("wordcloud.csv")
 arrivals_nights <- read.csv("arrivals_nights.csv")
+aux <- read.csv("auxiliary.csv")
 
 # convert to time series
 quarterly_reciepts <- ts(reciepts$Tourism.receipts, start=c(2005, 1), end=c(2016, 4), frequency=4) 
@@ -31,6 +32,8 @@ time <- ts(arrivals_nights$time, start=c(2004,1), end=c(2016,12), frequency=12)
 d1 <- ts(arrivals_nights$d1, start=c(2004,1), end=c(2016,12), frequency=12)
 d2 <- ts(arrivals_nights$d2, start=c(2004,1), end=c(2016,12), frequency=12)
 d3 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
+A_cycle <- ts(aux$A_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
+M_cycle <- ts(aux$M_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
 
 # Convert to date
 googletrends$Month <- as.Date(as.factor(googletrends$Month), format("%Y%m%d"))
@@ -132,13 +135,15 @@ pca3 <- splitTrainTest(pca3,numTrain = length(monthly_reciepts) - 24)
 pca4 <- splitTrainTest(pca4,numTrain = length(monthly_reciepts) - 24)
 pca5 <- splitTrainTest(pca5,numTrain = length(monthly_reciepts) - 24)
 time <- splitTrainTest(time,numTrain = length(monthly_reciepts) - 24)
+A_cycle <- splitTrainTest(A_cycle,numTrain = length(monthly_reciepts) - 24)
+M_cycle <- splitTrainTest(M_cycle,numTrain = length(monthly_reciepts) - 24)
 
-pca.train <- cbind(reciepts.split$train,pca1$train,pca2$train,pca3$train,pca4$train,pca5$train, time$train)
-pca.test <- cbind(reciepts.split$test,pca1$test,pca2$test,pca3$test,pca4$test,pca5$test, time$test)
+pca.train <- cbind(reciepts.split$train,pca1$train,pca2$train,pca3$train,pca4$train,pca5$train, A_cycle$train, M_cycle$train)
+pca.test <- cbind(reciepts.split$test,pca1$test,pca2$test,pca3$test,pca4$test,pca5$test, A_cycle$test, M_cycle$test)
 pca.test <-as.xts(pca.test)
 pca.train <- as.xts(pca.train)
-colnames(pca.test) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","time")
-colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","time")
+colnames(pca.test) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
+colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
 
 
 # Random forest ####Not working? Graphing?
@@ -180,8 +185,9 @@ graph_nnetar <- dygraph(cbind(reciepts.split$train,
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_nnetar
 
-# avNNet() #### Need to convert to XTS first?
+# avNNet()
 reciepts.avnnet<- avNNet(reciepts ~ ., data=pca.train, repeats=25, size=3, decay=0.1,
                linout=TRUE)
 summary(reciepts.avnnet$model[[1]])
-reciepts.avnnet.pred <- forecast(pca.train$receipts, h=36)
+reciepts.avnnet.pred <- forecast(pca.train$reciepts, h=36)
+        
