@@ -18,7 +18,6 @@ library(pls)
 library(forecast)
 library(CombMSC)
  
-
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
 wordcloud <- read.csv("wordcloud.csv")
@@ -107,15 +106,14 @@ pca3 <- pca$x [,3]
 pca4 <- pca$x [,4] 
 pca5 <- pca$x [,5] 
 
-
 pca1 <- ts(pca1, start=c(2004, 1), end=c(2017, 2), frequency=12) 
 pca2 <- ts(pca2, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)
 
-pcas <- cbind(pca1,pca2,pca3,pca4,pca5)
-# avNNet()plot_pca <- dygraph(pcas, main = "Principle components")
+pcas <- cbind(monthly_reciepts, pca1,pca2,pca3,pca4,pca5)
+plot_pca <- dygraph(pcas, main = "Principle components")
 
 # create time slice
 myTimeControl <- createTimeSlices(X, initialWindow=36, horizon = 12, fixedWindow = TRUE,
@@ -128,19 +126,34 @@ plsFitTime <- train(monthly_reciepts_d ~ .,
                   trControl = myTimeControl)
 
 reciepts.split <- splitTrainTest(monthly_reciepts,numTrain = length(monthly_reciepts) - 24)
+pca1 <- splitTrainTest(pca1,numTrain = length(monthly_reciepts) - 24)
+pca2 <- splitTrainTest(pca2,numTrain = length(monthly_reciepts) - 24)
+pca3 <- splitTrainTest(pca3,numTrain = length(monthly_reciepts) - 24)
+pca4 <- splitTrainTest(pca4,numTrain = length(monthly_reciepts) - 24)
+pca5 <- splitTrainTest(pca5,numTrain = length(monthly_reciepts) - 24)
+time <- splitTrainTest(time,numTrain = length(monthly_reciepts) - 24)
+
+pca.train <- cbind(reciepts.split$train,pca1$train,pca2$train,pca3$train,pca4$train,pca5$train, time$train)
+pca.test <- cbind(reciepts.split$test,pca1$test,pca2$test,pca3$test,pca4$test,pca5$test, time$test)
+pca.test <-as.xts(pca.test)
+pca.train <- as.xts(pca.train)
+colnames(pca.test) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","time")
+colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","time")
 
 
-
-
-# Random forest
+# Random forest ####Not working? Graphing?
 set.seed(seed)
-rf <- randomForest(monthly_reciepts_d ~ ., data= X, importance=TRUE,
+rf.fit <- randomForest(reciepts ~ ., 
+                   data = pca.train,importance=TRUE,
                          proximity=TRUE,
                    na.action=na.omit,
                    ntree=2000)
-print(rf)
-plot(rf, main='')
+print(rf.fit)
+plot(rf.fit, main='')
 varImpPlot(rf, main='')
+
+rf.predict <- predict(rf.fit, pca.test)
+print(rf.predict)
 
 #Nueral net
 set.seed(seed)
@@ -167,4 +180,8 @@ graph_nnetar <- dygraph(cbind(reciepts.split$train,
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_nnetar
 
-#avNNet()
+# avNNet() #### Need to convert to XTS first?
+reciepts.avnnet<- avNNet(reciepts ~ ., data=pca.train, repeats=25, size=3, decay=0.1,
+               linout=TRUE)
+summary(reciepts.avnnet$model[[1]])
+reciepts.avnnet.pred <- forecast(pca.train$receipts, h=36)
