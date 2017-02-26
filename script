@@ -17,6 +17,7 @@ library(RSNNS)
 library(pls)
 library(forecast)
 library(CombMSC)
+library(neuralnet)
  
 reciepts <- read.csv("quarterly_receipts.csv")# Read in data
 googletrends <- read.csv("google_trends.csv")
@@ -115,19 +116,20 @@ pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12)
 pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca5 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)
 
+#Normalization
+pca1 = (pca1-min(pca1))/(max(pca1)-min(pca1))
+pca2 = (pca2-min(pca2))/(max(pca2)-min(pca2))
+pca3 = (pca3-min(pca3))/(max(pca3)-min(pca3))
+pca4 = (pca4-min(pca4))/(max(pca4)-min(pca4))
+pca5 = (pca5-min(pca5))/(max(pca5)-min(pca5))
+A_cycle = (A_cycle-min(A_cycle))/(max(A_cycle)-min(A_cycle))
+M_cycle = (M_cycle-min(M_cycle))/(max(M_cycle)-min(M_cycle))
+
+                                                                                                                          
 pcas <- cbind(monthly_reciepts, pca1,pca2,pca3,pca4,pca5)
 plot_pca <- dygraph(pcas, main = "Principle components")
 
-# create time slice
-myTimeControl <- createTimeSlices(X, initialWindow=36, horizon = 12, fixedWindow = TRUE,
-                 skip = 0)
-
-plsFitTime <- train(monthly_reciepts_d ~ .,
-                  data = X,
-                  method = "pls",
-                  preProc = c("center", "scale"),
-                  trControl = myTimeControl)
-
+# Split test and training sets
 reciepts.split <- splitTrainTest(monthly_reciepts,numTrain = length(monthly_reciepts) - 24)
 pca1 <- splitTrainTest(pca1,numTrain = length(monthly_reciepts) - 24)
 pca2 <- splitTrainTest(pca2,numTrain = length(monthly_reciepts) - 24)
@@ -164,10 +166,11 @@ print(rf.predict)
 set.seed(seed)
 
 #Neural network autoregression
-reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=11,P=1,size=7)
+reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=12,P=1,size=7)
 summary(reciepts.nnetar$model[[1]])
 reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
 accuracy(reciepts.nnetar.pred, reciepts.split$test)
+plot(reciepts.nnetar.pred)
 
 
 plot(reciepts.split$train)
@@ -190,4 +193,29 @@ reciepts.avnnet<- avNNet(reciepts ~ ., data=pca.train, repeats=25, size=3, decay
                linout=TRUE)
 summary(reciepts.avnnet$model[[1]])
 reciepts.avnnet.pred <- forecast(pca.train$reciepts, h=36)
-        
+
+
+
+##info: No, but it isn't hard to do it using the avNNet function from the caret package. 
+# Basically nnetar() is forecasting using an average of 20 neural nets where the inputs 
+#are lagged values of the time series. You would just need to add the xreg variables as 
+#inputs as well.
+
+#To implement avNNet() on a time series dataset, would you create a dataframe that holds 
+#not only dummy variables for holiday/seasonal effects but also the lagged variables? 
+#Eg something like avNNet(point_forecast ~ lagged_1 + lagged_2 + lagged_3 + holiday_1) 
+#where lagged_1,..,lagged_3 are the lagged variables for that daily forecast? 
+# (And thus not use nnetar() at all?)
+
+
+# Neural net
+nn <- neuralnet(reciepts ~ pca1 + pca2 + pca3 + pca4 + pca5 + A_cycle + M_cycle,
+                data=pca.train,hidden=c(5,3),linear.output=T)
+plot(nn)
+
+pr.nn <- compute(nn,pca.test[,1:7])
+
+
+MSE.nn <- sum((pca.test$reciepts - pr.nn$net.result)^2)/nrow(pca.test)
+
+
