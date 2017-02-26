@@ -88,15 +88,6 @@ graph_monthly_reciepts
 monthly_reciepts_components <- decompose(monthly_reciepts)
 plot(monthly_reciepts_components)
 
-
-#data wrangling
-monthly_reciepts_d <- diff(monthly_reciepts, differences=1)
-monthly_reciepts_d <- as.xts(monthly_reciepts_d)
-X <- merge(monthly_reciepts_d, x)
-X <- X[,-2]
-y <- X$monthly_reciepts_d
-x <- x[,-1]
-
 # Principle component 
 pca<-prcomp(googletrends[, -1],center = TRUE, 
      scale. = TRUE)  
@@ -124,21 +115,19 @@ pca4 = (pca4-min(pca4))/(max(pca4)-min(pca4))
 pca5 = (pca5-min(pca5))/(max(pca5)-min(pca5))
 A_cycle = (A_cycle-min(A_cycle))/(max(A_cycle)-min(A_cycle))
 M_cycle = (M_cycle-min(M_cycle))/(max(M_cycle)-min(M_cycle))
-
-                                                                                                                          
-pcas <- cbind(monthly_reciepts, pca1,pca2,pca3,pca4,pca5)
-plot_pca <- dygraph(pcas, main = "Principle components")
+monthly_reciepts_n = (monthly_reciepts-min(monthly_reciepts))/
+        (max(monthly_reciepts)-min(monthly_reciepts))
 
 # Split test and training sets
-reciepts.split <- splitTrainTest(monthly_reciepts,numTrain = length(monthly_reciepts) - 24)
-pca1 <- splitTrainTest(pca1,numTrain = length(monthly_reciepts) - 24)
-pca2 <- splitTrainTest(pca2,numTrain = length(monthly_reciepts) - 24)
-pca3 <- splitTrainTest(pca3,numTrain = length(monthly_reciepts) - 24)
-pca4 <- splitTrainTest(pca4,numTrain = length(monthly_reciepts) - 24)
-pca5 <- splitTrainTest(pca5,numTrain = length(monthly_reciepts) - 24)
-time <- splitTrainTest(time,numTrain = length(monthly_reciepts) - 24)
-A_cycle <- splitTrainTest(A_cycle,numTrain = length(monthly_reciepts) - 24)
-M_cycle <- splitTrainTest(M_cycle,numTrain = length(monthly_reciepts) - 24)
+reciepts.split <- splitTrainTest(monthly_reciepts_n,numTrain = length(monthly_reciepts_n) - 24)
+pca1 <- splitTrainTest(pca1,numTrain = length(monthly_reciepts_n) - 24)
+pca2 <- splitTrainTest(pca2,numTrain = length(monthly_reciepts_n) - 24)
+pca3 <- splitTrainTest(pca3,numTrain = length(monthly_reciepts_n) - 24)
+pca4 <- splitTrainTest(pca4,numTrain = length(monthly_reciepts_n) - 24)
+pca5 <- splitTrainTest(pca5,numTrain = length(monthly_reciepts_n) - 24)
+time <- splitTrainTest(time,numTrain = length(monthly_reciepts_n) - 24)
+A_cycle <- splitTrainTest(A_cycle,numTrain = length(monthly_reciepts_n) - 24)
+M_cycle <- splitTrainTest(M_cycle,numTrain = length(monthly_reciepts_n) - 24)
 
 pca.train <- cbind(reciepts.split$train,pca1$train,pca2$train,pca3$train,pca4$train,pca5$train, A_cycle$train, M_cycle$train)
 pca.test <- cbind(reciepts.split$test,pca1$test,pca2$test,pca3$test,pca4$test,pca5$test, A_cycle$test, M_cycle$test)
@@ -157,10 +146,28 @@ rf.fit <- randomForest(reciepts ~ .,
                    ntree=2000)
 print(rf.fit)
 plot(rf.fit, main='')
-varImpPlot(rf, main='')
+varImpPlot(rf.fit, main='')
 
 rf.predict <- predict(rf.fit, pca.test)
 print(rf.predict)
+
+graph_rf <- dygraph(cbind(reciepts.split$train,
+                          rf.fit.predicted_t,
+                          rf.predict_t,
+                          reciepts.split$test))%>%
+        dyShading(from = "2004-1-1", to = "2014-12-12", color = "#FFE6E6") %>%
+        dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
+graph_rf
+
+rf.predict_t <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
+rf.fit.predicted_t <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
+
+
+
+
+
+
+
 
 #Nueral net
 set.seed(seed)
@@ -171,7 +178,6 @@ summary(reciepts.nnetar$model[[1]])
 reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
 accuracy(reciepts.nnetar.pred, reciepts.split$test)
 plot(reciepts.nnetar.pred)
-
 
 plot(reciepts.split$train)
 lines(reciepts.nnetar.pred$fitted, 
@@ -215,7 +221,15 @@ plot(nn)
 
 pr.nn <- compute(nn,pca.test[,1:7])
 
+w.pr.nn <- pr.nn$net.result*(max(monthly_reciepts)-min(monthly_reciepts))+min(monthly_reciepts)
+w.pr.nn
 
-MSE.nn <- sum((pca.test$reciepts - pr.nn$net.result)^2)/nrow(pca.test)
+w.reciepts_test <- (pca.test$reciepts)*(max(monthly_reciepts)-min(monthly_reciepts))+min(monthly_reciepts)
+w.reciepts_test
 
 
+joint <- dygraph(cbind(w.pr.nn, w.reciepts_test))
+joint
+
+#subject to revision
+MSE.nn <- sum((w.reciepts_test - w.pr.nn)^2)/nrow(w.reciepts_test)
