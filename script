@@ -161,6 +161,7 @@ rf.fit.train <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=
 rf.fit.test  <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
 
 
+
 graph_rf <- dygraph(cbind(reciepts.split$train,
                           rf.fit.train,
                           rf.fit.test,
@@ -175,7 +176,7 @@ set.seed(seed)
 reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=12,P=1,size=7)
 summary(reciepts.nnetar$model[[1]])
 reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
-accuracy(reciepts.nnetar.pred, reciepts.split$test)
+
 plot(reciepts.nnetar.pred)
 
 plot(reciepts.split$train)
@@ -223,5 +224,9 @@ w.reciepts_test
 joint <- dygraph(cbind(w.pr.nn, w.reciepts_test))
 joint
 
-# Summary statistics
-MSE.nn <- sum((w.reciepts_test - w.pr.nn)^2)/nrow(w.reciepts_test)
+# Forecast summary statistics
+accuracy(rf.fit.test, reciepts.split$test)                 # Random Forest
+accuracy(reciepts.nnetar.pred, reciepts.split$test)        # Nueral Network AR
+accuracy(nn.fit.test,reciepts.split$test)                  # Nueral Network Google
+
+################################################################################################
