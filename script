@@ -1,6 +1,6 @@
 cat("\014")
 
-#Set seed
+# Set seed
 seed <-777
 
 # Required packages
@@ -27,27 +27,27 @@ aux             <- read.csv("auxiliary.csv")
 
 # convert to time series
 quarterly_reciepts <- ts(reciepts$Tourism.receipts, start=c(2005, 1), end=c(2016, 4), frequency=4) 
-tot_arrivals <- ts(arrivals_nights$Arrivals, start=c(2004,1), end=c(2016,12), frequency=12)
-tot_nights <- ts(arrivals_nights$Nights, start=c(2004,1), end=c(2016,12), frequency=12)
-time <- ts(arrivals_nights$time, start=c(2004,1), end=c(2016,12), frequency=12)
-d1 <- ts(arrivals_nights$d1, start=c(2004,1), end=c(2016,12), frequency=12)
-d2 <- ts(arrivals_nights$d2, start=c(2004,1), end=c(2016,12), frequency=12)
-d3 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
-A_cycle <- ts(aux$A_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
-M_cycle <- ts(aux$M_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
+tot_arrivals       <- ts(arrivals_nights$Arrivals, start=c(2004,1), end=c(2016,12), frequency=12)
+tot_nights         <- ts(arrivals_nights$Nights, start=c(2004,1), end=c(2016,12), frequency=12)
+time               <- ts(arrivals_nights$time, start=c(2004,1), end=c(2016,12), frequency=12)
+d1                 <- ts(arrivals_nights$d1, start=c(2004,1), end=c(2016,12), frequency=12)
+d2                 <- ts(arrivals_nights$d2, start=c(2004,1), end=c(2016,12), frequency=12)
+d3                 <- ts(arrivals_nights$d3, start=c(2004,1), end=c(2016,12), frequency=12)
+A_cycle            <- ts(aux$A_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
+M_cycle            <- ts(aux$M_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
 
 # Convert to date
 googletrends$Month <- as.Date(as.factor(googletrends$Month), format("%Y%m%d"))
 # Convert to xts
 x                  <- xts(googletrends, order.by = googletrends$Month) 
 
-#Wordcloud
+# Wordcloud
 pal <- brewer.pal(9, "Dark2")
 wordcloud(words = wordcloud$Word, freq = wordcloud$Freq, min.freq = 1,
           , random.order=FALSE, rot.per=0.35, 
           colors=pal)
 
-#Subset
+# Subset
 tour.us.data  <- select(googletrends,contains("United.States"))
 tour.ven.data <- select(googletrends,contains("Venezuela"))
 tour.col.data <- select(googletrends,contains("Colombia"))
@@ -55,7 +55,7 @@ tour.ned.data <- select(googletrends,contains("Netherlands"))
 tour.can.data <- select(googletrends,contains("Canada"))
 
 # calculate and plot correlation matrix
-corMat_tour.us.data <- cor(tour.us.data[, -1])
+corMat_tour.us.data  <- cor(tour.us.data [, -1])
 corMat_tour.ven.data <- cor(tour.ven.data[, -1])
 corMat_tour.col.data <- cor(tour.col.data[, -1])
 corMat_tour.ned.data <- cor(tour.ned.data[, -1])
@@ -107,33 +107,35 @@ pca3 <- ts(pca3, start=c(2004, 1), end=c(2017, 2), frequency=12)
 pca4 <- ts(pca4, start=c(2004, 1), end=c(2017, 2), frequency=12)  
 pca5 <- ts(pca5, start=c(2004, 1), end=c(2017, 2), frequency=12)
 
-#Normalization
-pca1 = (pca1-min(pca1))/(max(pca1)-min(pca1))
-pca2 = (pca2-min(pca2))/(max(pca2)-min(pca2))
-pca3 = (pca3-min(pca3))/(max(pca3)-min(pca3))
-pca4 = (pca4-min(pca4))/(max(pca4)-min(pca4))
-pca5 = (pca5-min(pca5))/(max(pca5)-min(pca5))
-A_cycle = (A_cycle-min(A_cycle))/(max(A_cycle)-min(A_cycle))
-M_cycle = (M_cycle-min(M_cycle))/(max(M_cycle)-min(M_cycle))
-monthly_reciepts_n = (monthly_reciepts-min(monthly_reciepts))/
-        (max(monthly_reciepts)-min(monthly_reciepts))
+# Normalization
+pca1               <- (pca1-min(pca1))/(max(pca1)-min(pca1))
+pca2               <- (pca2-min(pca2))/(max(pca2)-min(pca2))
+pca3               <- (pca3-min(pca3))/(max(pca3)-min(pca3))
+pca4               <- (pca4-min(pca4))/(max(pca4)-min(pca4))
+pca5               <- (pca5-min(pca5))/(max(pca5)-min(pca5))
+A_cycle            <- (A_cycle-min(A_cycle))/(max(A_cycle)-min(A_cycle))
+M_cycle            <- (M_cycle-min(M_cycle))/(max(M_cycle)-min(M_cycle))
+monthly_reciepts_n <- (monthly_reciepts-min(monthly_reciepts))/
+                        (max(monthly_reciepts)-min(monthly_reciepts))
 
 # Split test and training sets
 reciepts.split <- splitTrainTest(monthly_reciepts_n,numTrain = length(monthly_reciepts_n) - 24)
-pca1 <- splitTrainTest(pca1,numTrain = length(monthly_reciepts_n) - 24)
-pca2 <- splitTrainTest(pca2,numTrain = length(monthly_reciepts_n) - 24)
-pca3 <- splitTrainTest(pca3,numTrain = length(monthly_reciepts_n) - 24)
-pca4 <- splitTrainTest(pca4,numTrain = length(monthly_reciepts_n) - 24)
-pca5 <- splitTrainTest(pca5,numTrain = length(monthly_reciepts_n) - 24)
-time <- splitTrainTest(time,numTrain = length(monthly_reciepts_n) - 24)
-A_cycle <- splitTrainTest(A_cycle,numTrain = length(monthly_reciepts_n) - 24)
-M_cycle <- splitTrainTest(M_cycle,numTrain = length(monthly_reciepts_n) - 24)
+pca1           <- splitTrainTest(pca1,numTrain = length(monthly_reciepts_n) - 24)
+pca2           <- splitTrainTest(pca2,numTrain = length(monthly_reciepts_n) - 24)
+pca3           <- splitTrainTest(pca3,numTrain = length(monthly_reciepts_n) - 24)
+pca4           <- splitTrainTest(pca4,numTrain = length(monthly_reciepts_n) - 24)
+pca5           <- splitTrainTest(pca5,numTrain = length(monthly_reciepts_n) - 24)
+time           <- splitTrainTest(time,numTrain = length(monthly_reciepts_n) - 24)
+A_cycle        <- splitTrainTest(A_cycle,numTrain = length(monthly_reciepts_n) - 24)
+M_cycle        <- splitTrainTest(M_cycle,numTrain = length(monthly_reciepts_n) - 24)
 
-pca.train <- cbind(reciepts.split$train,pca1$train,pca2$train,pca3$train,pca4$train,pca5$train, A_cycle$train, M_cycle$train)
-pca.test <- cbind(reciepts.split$test,pca1$test,pca2$test,pca3$test,pca4$test,pca5$test, A_cycle$test, M_cycle$test)
-pca.test <-as.xts(pca.test)
-pca.train <- as.xts(pca.train)
-colnames(pca.test) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
+pca.train      <- cbind(reciepts.split$train,pca1$train,pca2$train,
+                   pca3$train,pca4$train,pca5$train, A_cycle$train, M_cycle$train)
+pca.test       <- cbind(reciepts.split$test,pca1$test,pca2$test,
+                  pca3$test,pca4$test,pca5$test, A_cycle$test, M_cycle$test)
+pca.test       <-as.xts(pca.test)
+pca.train      <- as.xts(pca.train)
+colnames(pca.test)  <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
 colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
 
 # Corplot
@@ -148,15 +150,16 @@ rf.fit <- randomForest(reciepts ~ .,
                    na.action=na.omit,
                    ntree=2000)
 print(rf.fit)
-rf.plot1 <-plot(rf.fit, main='')
+rf.plot1 <- plot(rf.fit, main='')
 rf.plot2 <- varImpPlot(rf.fit, main='')
 rf.plot1
 rf.plot2
-rf.predict <- predict(rf.fit, pca.test)
+rf.predict <- predict(rf.fit, pca.test[,2:8])
 print(rf.predict)
 
-rf.fit.test <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
 rf.fit.train <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
+rf.fit.test  <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
+
 
 graph_rf <- dygraph(cbind(reciepts.split$train,
                           rf.fit.train,
@@ -166,10 +169,9 @@ graph_rf <- dygraph(cbind(reciepts.split$train,
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_rf
 
-###Nueral net
+### Nueral net
+#### Neural network autoregression
 set.seed(seed)
-
-####Neural network autoregression
 reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=12,P=1,size=7)
 summary(reciepts.nnetar$model[[1]])
 reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
