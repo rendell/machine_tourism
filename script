@@ -136,6 +136,9 @@ pca.train <- as.xts(pca.train)
 colnames(pca.test) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
 colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle", "M_cycle")
 
+# Corplot
+corMat_pca.train <- cor(pca.train[, -1])
+corrplot.mixed(corMat_pca.train, order = "hclust", upper ="pie")
 
 # Random forest ####Not working? Graphing?
 set.seed(seed)
@@ -145,11 +148,15 @@ rf.fit <- randomForest(reciepts ~ .,
                    na.action=na.omit,
                    ntree=2000)
 print(rf.fit)
-plot(rf.fit, main='')
-varImpPlot(rf.fit, main='')
+rf.plot1 <-plot(rf.fit, main='')
+rf.plot2 <- varImpPlot(rf.fit, main='')
+rf.plot1
+rf.plot2
+
 
 rf.predict <- predict(rf.fit, pca.test)
 print(rf.predict)
+
 
 graph_rf <- dygraph(cbind(reciepts.split$train,
                           rf.fit.predicted_t,
@@ -161,13 +168,6 @@ graph_rf
 
 rf.predict_t <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
 rf.fit.predicted_t <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
-
-
-
-
-
-
-
 
 #Nueral net
 set.seed(seed)
@@ -199,8 +199,6 @@ reciepts.avnnet<- avNNet(reciepts ~ ., data=pca.train, repeats=25, size=3, decay
                linout=TRUE)
 summary(reciepts.avnnet$model[[1]])
 reciepts.avnnet.pred <- forecast(pca.train$reciepts, h=36)
-
-
 
 ##info: No, but it isn't hard to do it using the avNNet function from the caret package. 
 # Basically nnetar() is forecasting using an average of 20 neural nets where the inputs 
