@@ -19,11 +19,11 @@ library(forecast)
 library(CombMSC)
 library(neuralnet)
  
-reciepts <- read.csv("quarterly_receipts.csv")# Read in data
-googletrends <- read.csv("google_trends.csv")
-wordcloud <- read.csv("wordcloud.csv")
+reciepts        <- read.csv("quarterly_receipts.csv")# Read in data
+googletrends    <- read.csv("google_trends.csv")
+wordcloud       <- read.csv("wordcloud.csv")
 arrivals_nights <- read.csv("arrivals_nights.csv")
-aux <- read.csv("auxiliary.csv")
+aux             <- read.csv("auxiliary.csv")
 
 # convert to time series
 quarterly_reciepts <- ts(reciepts$Tourism.receipts, start=c(2005, 1), end=c(2016, 4), frequency=4) 
@@ -39,7 +39,7 @@ M_cycle <- ts(aux$M_cycle, start=c(2004,1), end=c(2017,2), frequency=12)
 # Convert to date
 googletrends$Month <- as.Date(as.factor(googletrends$Month), format("%Y%m%d"))
 # Convert to xts
-x <- xts(googletrends, order.by = googletrends$Month) 
+x                  <- xts(googletrends, order.by = googletrends$Month) 
 
 #Wordcloud
 pal <- brewer.pal(9, "Dark2")
@@ -140,7 +140,7 @@ colnames(pca.train) <- c("reciepts","pca1","pca2","pca3","pca4","pca5","A_cycle"
 corMat_pca.train <- cor(pca.train[, -1])
 corrplot.mixed(corMat_pca.train, order = "hclust", upper ="pie")
 
-## Random forest
+### Random forest
 set.seed(seed)
 rf.fit <- randomForest(reciepts ~ ., 
                    data = pca.train,importance=TRUE,
@@ -155,21 +155,21 @@ rf.plot2
 rf.predict <- predict(rf.fit, pca.test)
 print(rf.predict)
 
+rf.fit.test <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
+rf.fit.train <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
+
 graph_rf <- dygraph(cbind(reciepts.split$train,
-                          rf.fit.predicted_t,
-                          rf.predict_t,
+                          rf.fit.train,
+                          rf.fit.test,
                           reciepts.split$test))%>%
         dyShading(from = "2004-1-1", to = "2014-12-12", color = "#FFE6E6") %>%
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_rf
 
-rf.predict_t <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
-rf.fit.predicted_t <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
-
-##Nueral net
+###Nueral net
 set.seed(seed)
 
-#Neural network autoregression
+####Neural network autoregression
 reciepts.nnetar <- nnetar(reciepts.split$train, repeats = 20,p=12,P=1,size=7)
 summary(reciepts.nnetar$model[[1]])
 reciepts.nnetar.pred <- forecast(reciepts.split$train, h=36)
@@ -191,40 +191,35 @@ graph_nnetar <- dygraph(cbind(reciepts.split$train,
         dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
 graph_nnetar
 
-# avNNet()
-reciepts.avnnet<- avNNet(reciepts ~ ., data=pca.train, repeats=25, size=3, decay=0.1,
-               linout=TRUE)
-summary(reciepts.avnnet$model[[1]])
-reciepts.avnnet.pred <- forecast(pca.train$reciepts, h=36)
-
-##info: No, but it isn't hard to do it using the avNNet function from the caret package. 
-# Basically nnetar() is forecasting using an average of 20 neural nets where the inputs 
-#are lagged values of the time series. You would just need to add the xreg variables as 
-#inputs as well.
-
-#To implement avNNet() on a time series dataset, would you create a dataframe that holds 
-#not only dummy variables for holiday/seasonal effects but also the lagged variables? 
-#Eg something like avNNet(point_forecast ~ lagged_1 + lagged_2 + lagged_3 + holiday_1) 
-#where lagged_1,..,lagged_3 are the lagged variables for that daily forecast? 
-# (And thus not use nnetar() at all?)
-
-
-# Neural net
+### Neural network
+set.seed(seed)
 nn <- neuralnet(reciepts ~ pca1 + pca2 + pca3 + pca4 + pca5 + A_cycle + M_cycle,
-                data=pca.train,hidden=c(5,3),linear.output=T)
+                data=pca.train,hidden=c(7,1),linear.output=T)
 plot(nn)
 
-pr.nn <- compute(nn,pca.test[,1:7])
+pr.nn <- compute(nn,pca.test[,2:8])
 
+nn.fit.test  <- ts(pr.nn$net.result, start=c(2015,1), end=c(2017,2), frequency=12)
+nn.fit.train <- ts(nn$net.result[[1]], start=c(2004,1), end=c(2014,12), frequency=12)
+
+graph_nnet <- dygraph(cbind(reciepts.split$train,
+                            nn.fit.test,
+                            nn.fit.train,
+                            reciepts.split$test))%>%
+        dyShading(from = "2004-1-1", to = "2014-12-12", color = "#FFE6E6") %>%
+        dyShading(from = "2015-1-1", to = "2016-12-12", color = "#CCEBD6")
+graph_nnet
+
+# Weighing (Needs fixing)
 w.pr.nn <- pr.nn$net.result*(max(monthly_reciepts)-min(monthly_reciepts))+min(monthly_reciepts)
 w.pr.nn
 
-w.reciepts_test <- (pca.test$reciepts)*(max(monthly_reciepts)-min(monthly_reciepts))+min(monthly_reciepts)
+w.reciepts_test <- (pca.test$reciepts)*(max(monthly_reciepts)
+                                        -min(monthly_reciepts))+min(monthly_reciepts)
 w.reciepts_test
-
 
 joint <- dygraph(cbind(w.pr.nn, w.reciepts_test))
 joint
 
-#subject to revision
+# Summary statistics
 MSE.nn <- sum((w.reciepts_test - w.pr.nn)^2)/nrow(w.reciepts_test)
