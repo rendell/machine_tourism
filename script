@@ -160,8 +160,6 @@ print(rf.predict)
 rf.fit.train <- ts(rf.fit$predicted, start=c(2004,1), end=c(2014,12), frequency=12)
 rf.fit.test  <- ts(rf.predict, start=c(2015,1), end=c(2017,2), frequency=12)
 
-
-
 graph_rf <- dygraph(cbind(reciepts.split$train,
                           rf.fit.train,
                           rf.fit.test,
