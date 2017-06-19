@@ -1,3 +1,5 @@
+setwd("<location of your dataset>")
+
 cat("\014")
 
 # Set seed
